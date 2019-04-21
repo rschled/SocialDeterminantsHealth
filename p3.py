@@ -118,6 +118,16 @@ def computeNumericalGradient(N, X, y):
         
 def main():
     #input data x
+
+    numdata = pd.read_excel('formatted_vals.xlsx')
+    numy = pd.read_excel('yvals.xlsx') 
+
+    trainx = numdata.loc[1:61].to_numpy() 
+    testx = numdata.loc[63:83].to_numpy()
+    
+    trainy = numy.loc[1:61].to_numpy()
+    testy =  numy.loc[63:83].to_numpy()
+
     x = np.array(([1,.5, .7, .6, .2], [.5,.4,.6, .09, .1], [.5,.5,.5,.5,.5]), dtype = float)
     #output data
     y = np.array(([.6],[.33], [.5]), dtype = float)
