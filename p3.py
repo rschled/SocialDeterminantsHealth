@@ -2,29 +2,37 @@ import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
 
+
 class trainer(object):
-    def __init__(self,N):
+    def __init__(self, N):
+        #Make Local reference to network:
         self.N = N
         
-    def callback(self, params):
+    def callbackF(self, params):
         self.N.setParams(params)
-        self.e.append(self.N.cost(self.X, self.y))
+        self.e.append(self.N.cost(self.X, self.y))   
         
-    def costwrapper(self, params, X, y):
-        self.N.setParams()
+    def costFunctionWrapper(self, params, X, y):
+        self.N.setParams(params)
         cost = self.N.cost(X, y)
         grad = self.N.computeGradients(X,y)
+        
         return cost, grad
         
     def train(self, X, y):
+        #Make an internal variable for the callback function:
         self.X = X
         self.y = y
-        
+
+        #Make empty list to store costs:
         self.e = []
         
         params0 = self.N.getParams()
+
         options = {'maxiter': 200, 'disp' : True}
-        _res = optimize.minimize(self.costwrapper, params0, jac = True, method='BFGS',args=(X, y), options=options, callback = self.callback)
+        _res = optimize.minimize(self.costFunctionWrapper, params0, jac=True, method='BFGS', \
+                                 args=(X, y), options=options, callback=self.callbackF)
+
         self.N.setParams(_res.x)
         self.optimizationResults = _res
         
@@ -47,14 +55,14 @@ class Neural(object):
         
     def cost(self,X, y):
         self.yp = self.forward(X)
-        e = sum(.2*(y-self.yp)**2)
+        e = .2*sum((y-self.yp)**2)
         return e
         
     def costp(self, x, y):
         self.yp = self.forward(x)
         
         d3 = np.multiply(-(y-self.yp), self.sigp(self.o2))
-        dedM2 = np.dot(self.o2.T, d3)
+        dedM2 = np.dot(self.y1.T, d3)
         
         d2 = np.dot(d3, self.M2.T) *self.sigp(self.o1)
         dedM1 = np.dot(x.T, d2)
@@ -72,19 +80,19 @@ class Neural(object):
         self.M2 += eps*D2
     
     def getParams(self):
-        params = np.concatenate(self.M1.ravel(), self.M2.ravel())
+        params = np.concatenate((self.M1.ravel(), self.M2.ravel()))
         return params
         
     def setParams(self, params):
         M1_start = 0
-        M1_end = self.hiddenLayerSize*self.inputLayerSize
-        self.M1 = np.reshape(params[M1_start:M1_end], (self.inputLayerSize, self.hiddenLayerSize))
-        M2_end = M1_end + self.hiddenLayerSize*self.outputLayerSize
-        self.M2 = np.reshape(params[M1_end:M2_end], (self.hiddenLayerSize, self.outputLayerSize))
+        M1_end = self.hiddenLayer*self.inputLayer
+        self.M1 = np.reshape(params[M1_start:M1_end], (self.inputLayer, self.hiddenLayer))
+        M2_end = M1_end + self.hiddenLayer*self.outputLayer
+        self.M2 = np.reshape(params[M1_end:M2_end], (self.hiddenLayer, self.outputLayer))
     
     def computeGradients(self, X, y):
         dedM1, dedM2 = self.costp(X, y)
-        return np.concatenate(dedM1.ravel(),dedM2.ravel())
+        return np.concatenate((dedM1.ravel(),dedM2.ravel()))
             
 def computeNumericalGradient(N, X, y):
     paramsInitial = N.getParams()
@@ -95,10 +103,10 @@ def computeNumericalGradient(N, X, y):
     for p in range(len(paramsInitial)):
         perturb[p] = eps
         N.setParams(paramsInitial + perturb)
-        loss2 = N.costFunction(X, y)
+        loss2 = N.cost(X, y)
         
         N.setParams(paramsInitial - perturb)
-        loss1 = N.costFunction(X, y)
+        loss1 = N.cost(X, y)
         
         numgrad[p] = (loss2 - loss1) / (2*eps)
         
@@ -131,10 +139,12 @@ def main():
     
     numgrad = computeNumericalGradient(nn, x, y)
     grad = nn.computeGradients(x, y)
+    print(numgrad)
+    print(grad)
     
-    diff = np.norm(grad-numgrad)/np.norm(grad+numgrad)
-    print('Gradient difference :')
-    print(diff)
+    diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
+    #print('Gradient difference :')
+    #print(diff)
     
     print('Matrix 1:')
     print(nn.M1)
