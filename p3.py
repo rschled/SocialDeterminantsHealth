@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
+import pandas as pd
 
 #class SVDtrain(object):
     #def __init__(self, N):
@@ -136,34 +137,33 @@ def main():
     trainy = numy.loc[1:61].to_numpy()
     testy =  numy.loc[63:83].to_numpy()
 
-    x = np.array(([1,.5, .7, .6, .2], [.5,.4,.6, .09, .1], [.5,.5,.5,.5,.5]), dtype = float)
+    #x = np.array(([1,.5, .7, .6, .2], [.5,.4,.6, .09, .1], [.5,.5,.5,.5,.5]), dtype = float)
     #output data
-    y = np.array(([.6],[.33], [.5]), dtype = float)
+    #y = np.array(([.6],[.33], [.5]), dtype = float)
     nn = Neural()
     
-    numgrad = computeNumericalGradient(nn, x, y)
-    grad = nn.computeGradients(x, y)
-    print(numgrad)
-    print(grad)
+    #numgrad = computeNumericalGradient(nn, x, y)
+    #grad = nn.computeGradients(x, y)
+    #print(numgrad)
+    #print(grad)
     
-    diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
-    print('Gradient difference :')
-    print(diff)
+    #diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
+    #print('Gradient difference :')
+    #print(diff)
     
     T = trainer(nn)
-    T.train(x, y)
+    T.train(trainx, trainy)
     plt.plot(T.e)
     plt.grid(1)
     plt.ylabel('Cost')
     plt.xlabel('Iterations')
     plt.show()
     
-    nn.cost(x,y)
-    yp = nn.forward(x)
+    yp = nn.forward(trainx)
     print('Predicted :')
     print(yp)
     print('Actual :')
-    print(y)
+    print(trainy)
     
 
     
@@ -172,6 +172,8 @@ def main():
     print('Matrix 2:')
     print(nn.M2)
     
-    #error = sum((nn.forward(xtest)-y)**2)
+    error = sum((nn.forward(testx)-testy)**2)
+    print('error:')
+    print(error)
 
 main()
