@@ -2,6 +2,14 @@ import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
 
+#class SVDtrain(object):
+    #def __init__(self, N):
+        #self.N = N
+    
+    #def cost(self):
+    #def costp(self):
+    #def forward():
+    #def 
 
 class trainer(object):
     def __init__(self, N):
@@ -132,12 +140,22 @@ def main():
     #output data
     y = np.array(([.6],[.33], [.5]), dtype = float)
     nn = Neural()
+    
+    numgrad = computeNumericalGradient(nn, x, y)
+    grad = nn.computeGradients(x, y)
+    print(numgrad)
+    print(grad)
+    
+    diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
+    print('Gradient difference :')
+    print(diff)
+    
     T = trainer(nn)
     T.train(x, y)
     plt.plot(T.e)
     plt.grid(1)
-    plt.ylabel('cost')
-    plt.xlabel('iterations')
+    plt.ylabel('Cost')
+    plt.xlabel('Iterations')
     plt.show()
     
     nn.cost(x,y)
@@ -147,18 +165,13 @@ def main():
     print('Actual :')
     print(y)
     
-    numgrad = computeNumericalGradient(nn, x, y)
-    grad = nn.computeGradients(x, y)
-    print(numgrad)
-    print(grad)
-    
-    diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
-    #print('Gradient difference :')
-    #print(diff)
+
     
     print('Matrix 1:')
     print(nn.M1)
     print('Matrix 2:')
     print(nn.M2)
+    
+    #error = sum((nn.forward(xtest)-y)**2)
 
 main()
