@@ -1,18 +1,32 @@
 import numpy as np
-#from scipy import optimize
+from scipy import optimize
 import matplotlib.pyplot as plt
 
 class trainer(object):
     def __init__(self,N):
         self.N = N
-    #def costwrapper(self, params, X, y):
-        #self.N.setParams()
-        #cost = self.N.cost(X, y)
-    #def train(self, X, y):
         
-        #params0 = self.N.getParams()
+    def callback(self, params):
+        self.N.setParams(params)
+        self.e.append(self.N.cost(self.X, self.y))
         
-        #_res = optimize.minimize(self.costwrapper, params0, jac = True, method='BFGS', )
+    def costwrapper(self, params, X, y):
+        self.N.setParams()
+        cost = self.N.cost(X, y)
+        grad = self.N.computeGradients(X,y)
+        return cost, grad
+        
+    def train(self, X, y):
+        self.X = X
+        self.y = y
+        
+        self.e = []
+        
+        params0 = self.N.getParams()
+        options = {'maxiter': 200, 'disp' : True}
+        _res = optimize.minimize(self.costwrapper, params0, jac = True, method='BFGS',args=(X, y), options=options, callback = self.callback)
+        self.N.setParams(_res.x)
+        self.optimizationResults = _res
         
 
 class Neural(object):
@@ -51,6 +65,7 @@ class Neural(object):
         
     def sigp(self, z):
         return np.exp(-z)/((1+np.exp(-z))**2)
+        
     def learn(self, D1, D2):
         eps = .005
         self.M1 += eps*D1
@@ -59,15 +74,17 @@ class Neural(object):
     def getParams(self):
         params = np.concatenate(self.M1.ravel(), self.M2.ravel())
         return params
+        
     def setParams(self, params):
         M1_start = 0
         M1_end = self.hiddenLayerSize*self.inputLayerSize
         self.M1 = np.reshape(params[M1_start:M1_end], (self.inputLayerSize, self.hiddenLayerSize))
         M2_end = M1_end + self.hiddenLayerSize*self.outputLayerSize
         self.M2 = np.reshape(params[M1_end:M2_end], (self.hiddenLayerSize, self.outputLayerSize))
+    
     def computeGradients(self, X, y):
-        dedM1, dedM2 = self.costp(X, y):
-            return np.concatenate(dedM1.ravel(),dedM2.ravel())
+        dedM1, dedM2 = self.costp(X, y)
+        return np.concatenate(dedM1.ravel(),dedM2.ravel())
             
 def computeNumericalGradient(N, X, y):
     paramsInitial = N.getParams()
@@ -97,16 +114,28 @@ def main():
     #output data
     y = np.array(([.6],[.33], [.5]), dtype = float)
     nn = Neural()
-    costv = []
-    costv.extend(nn.cost(x,y))
-    for i in range(100):
-        dedM1, dedM2 = nn.costp(x,y)
-        nn.learn(dedM1, dedM2)
-        costv.extend(nn.cost(x,y))
-    plt.plot(costv)
+    T = trainer(nn)
+    T.train(x, y)
+    plt.plot(T.e)
+    plt.grid(1)
     plt.ylabel('cost')
     plt.xlabel('iterations')
     plt.show()
+    
+    nn.cost(x,y)
+    yp = nn.forward(x)
+    print('Predicted :')
+    print(yp)
+    print('Actual :')
+    print(y)
+    
+    numgrad = computeNumericalGradient(nn, x, y)
+    grad = nn.computeGradients(x, y)
+    
+    diff = np.norm(grad-numgrad)/np.norm(grad+numgrad)
+    print('Gradient difference :')
+    print(diff)
+    
     print('Matrix 1:')
     print(nn.M1)
     print('Matrix 2:')
