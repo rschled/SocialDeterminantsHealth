@@ -40,7 +40,7 @@ class trainer(object):
         
         params0 = self.N.getParams()
 
-        options = {'maxiter': 1000, 'disp' : False}
+        options = {'maxiter': 1000, 'disp' : True}
         _res = optimize.minimize(self.costFunctionWrapper, params0, jac=True, method='BFGS', \
                                  args=(X, y), options=options, callback=self.callbackF)
 
@@ -65,18 +65,20 @@ class Neural(object):
         return yp
         
     def cost(self,X, y):
+        
         self.yp = self.forward(X)
-        e = .2*sum((y-self.yp)**2)
+        e = .5*sum((y-self.yp)**2)
         return e
         
     def costp(self, x, y):
+        eps = 1e-4
         self.yp = self.forward(x)
         
         d3 = np.multiply(-(y-self.yp), self.sigp(self.o2))
-        dedM2 = np.dot(self.y1.T, d3)
+        dedM2 = eps*np.dot(self.y1.T, d3)
         
         d2 = np.dot(d3, self.M2.T) *self.sigp(self.o1)
-        dedM1 = np.dot(x.T, d2)
+        dedM1 = eps*np.dot(x.T, d2)
         return dedM1, dedM2
         
     def sigmoid(self, z):
@@ -85,11 +87,6 @@ class Neural(object):
     def sigp(self, z):
         return np.exp(-z)/((1+np.exp(-z))**2)
         
-    def learn(self, D1, D2):
-        eps = .005
-        self.M1 += eps*D1
-        self.M2 += eps*D2
-    
     def getParams(self):
         params = np.concatenate((self.M1.ravel(), self.M2.ravel()))
         return params
@@ -125,7 +122,13 @@ def computeNumericalGradient(N, X, y):
     N.setParams(paramsInitial)
     return numgrad
     
-                        
+def checkgrad():
+    NN = Neural()
+    y = np.array(([.3],[.6],[.9]))
+    X = np.array(([.2,.7,.4,.5,.8],[.9,.7,.9,.6,.5],[.5,.7,.8,.1,.3]))
+    numgrad = computeNumericalGradient(NN, X, y)
+    grad = NN.computeGradients(X,y)
+    print(numgrad/grad)                    
         
 def main():
     #input data x
@@ -140,25 +143,18 @@ def main():
     testy =  numy.loc[61:82].to_numpy()
 
     nn = Neural()
-    #numgrad = computeNumericalGradient(nn, x, y)
-    #grad = nn.computeGradients(x, y)
-    #print(numgrad)
-    #print(grad)
-    
-    #diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
-    #print('Gradient difference :')
-    #print(diff)
+ 
     T = trainer(nn)
     T.train(trainx, trainy)
     M1max = nn.M1
     M2max = nn.M2
-    emin = sum((nn.forward(testx)-testy)**2)/22
+    emin = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
     
-    for i in range(100):
+    for i in range(10):
         nnt = Neural()
         T1 = trainer(nnt)
         T1.train(trainx, trainy)
-        ecur = sum((nnt.forward(testx)-testy)**2)/22
+        ecur = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
         if emin > ecur:
             emin = ecur
             M1max = nnt.M1
@@ -184,8 +180,9 @@ def main():
     print('Matrix 2:')
     print(M2max)
     
-    error = sum((nn.forward(testx)-testy)**2)/22
+    error = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
     print('error:')
     print(error)
 
 main()
+#checkgrad()
