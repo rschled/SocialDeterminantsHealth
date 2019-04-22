@@ -2,6 +2,7 @@ import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
 import pandas as pd
+
 from pandas import ExcelWriter
 from pandas import ExcelFile
 
@@ -13,74 +14,102 @@ from scipy.linalg import svd
 
 class SVDtrain(object):
     def __init__(self, M1, M2):
+        self.inputLayer = 5;#number of data points
+        self.outputLayer = 1; # output value
+        self.hiddenLayer = 3;
         
         # singular - value decomposition 
-        self.U1, s1, VT1 = svd(M1)
-        self.U2, s2, VT2 = svd(M2)  
+        self.U1, s1, VT1 = svd(M1.T)
+        self.U2, s2, VT2 = svd(M2.T)  
 
         # create m x n sigma matrix
-        sigma1 = zeros((M1.shape[0], M1.shape[1]))
-        sigma2 = zeros((M2.shape[0], M2.shape[1]))
+        sigma1 = zeros((M1.shape[1], M1.shape[0]))
+        sigma2 = zeros(( M2.shape[1], M2.shape[0]))
+        
+        #row1, col1 = np.diag_indices(sigma1.shape[0])
+        #row2, col2 = np.diag_indices(sigma2.shape[0])
+        
+        #sigma1[row1, col1] = s1
+        #sigma2[row2, col2] = s2
         
         # populate sigma with n x n diagonal matrix
-        sigma1[:M1.shape[0], :M1.shape[0]] = diag(s1)
-        sigma2[:M2.shape[0], :M2.shape[0]] = diag(s2) 
+        sigma1[:M1.shape[1], :M1.shape[1]] = diag(s1)
+        sigma2[:M2.shape[1], :M2.shape[1]] = diag(s2)
         
         
         # select top k singular values wanted
         # use f() to look at variance and 
         # opt to remove singular values
-        ids1 = self.sv_threshold(s1)
-        ids2 = self.sv_threshold(s2) 
+        ids1, idv1 = self.sv_threshold(s1, self.inputLayer)
+        ids2, idv2 = self.sv_threshold(s2, self.hiddenLayer) 
+        
         
         # reconstruct matrix
-        U1 = U1[:,[ids1]] 
+        
+        self.U1 = self.U1[:,[idv1]] 
         sigma1 = sigma1[:,[ids1]]
         VT1 = VT1[[ids1], :]
         
-        U2 = U2[:,[ids2]] 
+        self.U2 = self.U2[:,[idv2]] 
         sigma2 = sigma2[:, [ids2]]
-        VT2 = VT2[[ids2], :]   
+        VT2 = VT2[[ids2], :]
+        
 
+        
         # calculates W1 W2
         self.W1 = np.dot(sigma1, VT1)
         self.W2 = np.dot(sigma2, VT2)
         
+        
     
-    def sv_threshold(s):
-        elts = s.size 
+    def sv_threshold(self, s, layercount): 
+        id = []
+        idv = []
+        i = 0
         for singular_value in s:
             if (singular_value >= .02):
-                id.append(s) # add index in s if sing val is less
+                id.append(i) # do not add index in s if sing val is less
+                idv.append(i)
+                
+            i += 1
+        if (s.size < layercount):
+            i = s.size
+            while( i  != layercount):
+                id.append(i)
+                i += 1
+                
 
-        return id 
+        return id, idv
     
-    def cost(self):
+    def cost(self, X, y):
         self.zp = self.forward(X)
-        e = (1 / y.)*sum((y-self.zp)**2)
+        e = .5*sum((y-self.zp)**2)
         return e
     
-    def costp(self):
+    def costp(self, x, y):
         self.zp = self.forward(x)
         
         d4 = np.multiply(-(y-self.zp), self.sigp(self.p2))
         dedU2 = np.dot(np.dot(self.W2, self.z1), d4)
        
         d3 = np.multiply(d4, self.sigp(self.p2))
-        dedW2 = np.dot(self.U2, np.dot(d3, self.z1.T)
+        dedW2 = np.dot(self.U2, np.dot(d3.T, self.z1.T))
        
-        d2 = np.multiply(d3, self.sigp(self.p1))
-        dedU1 = np.dot(np.dot(self.W1, self.x.T), d2)
+        d2 = np.dot(d3.T, self.sigp(self.p1).T)
+        dedU1 = np.dot(np.dot(self.W1, x.T).T, d2.T)
          
-        d1 = np.dot(d2, self.M2.T) *self.sigp(self.p1)
-        dedW1 = np.dot(self.U1, np.dot(d2, self.x.T)
+        d1 = np.multiply(d2.T,self.sigp(self.p1))
+        dedW1 = np.dot(self.U1, np.dot(d1, x))
         
-        return dedU2, dedW2, dedU1, dedW1  
+        return dedU2, dedW2, dedU1, dedW1
         
-    def forward():
-        self.p1 = np.dot(U1, np.dot(W1, X))
+    def forward(self, X):
+        
+        self.p1 = np.dot(self.U1, np.dot(self.W1, X.T))
         self.z1 = self.sigmoid(self.p1)
-        self.p2 = np.dot(U2, np.dot(W2, z1))
+        
+        temp = np.dot(self.W2, self.z1).T
+        self.p2 = np.dot((temp), self.U2.T)
         zp = self.sigmoid(self.p2)
         return zp
     
@@ -91,25 +120,24 @@ class SVDtrain(object):
         return np.exp(-z)/((1+np.exp(-z))**2)
 
     def getParams(self):
-        params = np.concatenate((dedU2.ravel(),dedW2.ravel(), dedU1.ravel(),dedW1.ravel()))
+        params = np.concatenate((self.U1.ravel(),self.W1.ravel(),self.U2.ravel(),self.W2.ravel()))
         return params
         
     def setParams(self, params):
+        
         U1_start = 0
-        U1_end = len(U1[0])*self.inputLayer
-        self.U1 = np.reshape(params[U1_start:U1_end], (self.inputLayer, len(U1[0])))
+        U1_end = self.hiddenLayer*self.hiddenLayer
+        self.U1 = np.reshape(params[U1_start:U1_end], (self.hiddenLayer, self.hiddenLayer))
         
-        W1_start = 0
-        W1_end = len(W1[0])*self.inputLayer 
-        self.W1 = np.reshape(params[W1_start:W1_end], (self.inputLayer, len(W1[0]))) 
-
+        W1_end = self.hiddenLayer*self.inputLayer 
+        self.W1 = np.reshape(params[U1_end:W1_end], (self.hiddenLayer, self.inputLayer))
+        
         U2_start = 0
-        U2_end = len(U2[0])*self.inputLayer
-        self.U1 = np.reshape(params[U1_start:U1_end], (self.inputLayer, len(U2[0])))
+        U2_end = len(self.U2[0])*self.outputLayer
+        self.U2 = np.reshape(params[U2_start:U2_end], (self.outputLayer, self.outputLayer))
         
-        W2_start = 0
-        W2_end = len(W2[0])*self.inputLayer 
-        self.W2 = np.reshape(params[W2_start:W2_end], (self.inputLayer, len(W2[0]))) 
+        W2_end = len(self.W2[0])*self.hiddenLayer 
+        self.W2 = np.reshape(params[U2_end:W2_end], (self.outputLayer, self.hiddenLayer)) 
         
     def computeGradients(self, X, y):
         dedU2, dedW2, dedU1, dedW1 = self.costp(X, y)
@@ -233,7 +261,7 @@ def checkgrad():
         
 def main():
     #input data x
-
+    
     numdata = pd.read_excel('formatted_vals.xlsx')
     numy = pd.read_excel('yvals.xlsx') 
 
@@ -249,24 +277,22 @@ def main():
     T.train(trainx, trainy)
     M1max = nn.M1
     M2max = nn.M2
-    emin = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
+    emin = sum(np.abs(nn.forward(testx)-testy))/22
     
     for i in range(10):
         nnt = Neural()
         T1 = trainer(nnt)
         T1.train(trainx, trainy)
-        ecur = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
+        plt.plot(T1.e)
+        ecur = sum(np.abs(nn.forward(testx)-testy))/22
         if emin > ecur:
             emin = ecur
             M1max = nnt.M1
             M2max = nnt.M2
-    
-        
-    plt.plot(T.e)
     plt.grid(1)
     plt.ylabel('Cost')
     plt.xlabel('Iterations')
-    plt.show()
+    plt.show() 
     
     yp = nn.forward(testx)
     print('Predicted :')
@@ -284,6 +310,41 @@ def main():
     error = sum(((nn.forward(testx)-testy)**2)/(testy**2))/22
     print('error:')
     print(error)
+    
+def checksvd():
+    numdata = pd.read_excel('formatted_vals.xlsx')
+    numy = pd.read_excel('yvals.xlsx') 
 
+    trainx = numdata.loc[0:60].to_numpy() 
+    testx = numdata.loc[61:82].to_numpy()
+    
+    trainy = numy.loc[0:60].to_numpy()
+    testy =  numy.loc[61:82].to_numpy()
+
+    nn = Neural()
+ 
+    T = trainer(nn)
+    T.train(trainx, trainy)
+    SVD = SVDtrain(nn.M1, nn.M2)
+    Tsvd = trainer(SVD)
+    Tsvd.train(trainx, trainy)
+    yp = SVD.forward(testx)
+    
+    plt.plot(Tsvd.e)
+    plt.grid(1)
+    plt.ylabel('Cost')
+    plt.xlabel('Iterations')
+    plt.show()
+    
+    print('Predicted :')
+    print(yp)
+    print('Actual :')
+    print(testy)
+    
+    error = sum(((SVD.forward(testx)-testy)**2)/(testy**2))/22
+    print('error:')
+    print(error)
+    
 main()
+#checksvd()
 #checkgrad()
