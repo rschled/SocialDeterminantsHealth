@@ -5,14 +5,115 @@ import pandas as pd
 from pandas import ExcelWriter
 from pandas import ExcelFile
 
-#class SVDtrain(object):
-    #def __init__(self, N):
-        #self.N = N
+# used in svdecomp f()
+from numpy import array
+from numpy import diag
+from numpy import zeros
+from scipy.linalg import svd
+
+class SVDtrain(object):
+    def __init__(self, M1, M2):
+        
+        # singular - value decomposition 
+        self.U1, s1, VT1 = svd(M1)
+        self.U2, s2, VT2 = svd(M2)  
+
+        # create m x n sigma matrix
+        sigma1 = zeros((M1.shape[0], M1.shape[1]))
+        sigma2 = zeros((M2.shape[0], M2.shape[1]))
+        
+        # populate sigma with n x n diagonal matrix
+        sigma1[:M1.shape[0], :M1.shape[0]] = diag(s1)
+        sigma2[:M2.shape[0], :M2.shape[0]] = diag(s2) 
+        
+        
+        # select top k singular values wanted
+        # use f() to look at variance and 
+        # opt to remove singular values
+        ids1 = self.sv_threshold(s1)
+        ids2 = self.sv_threshold(s2) 
+        
+        # reconstruct matrix
+        U1 = U1[:,[ids1]] 
+        sigma1 = sigma1[:,[ids1]]
+        VT1 = VT1[[ids1], :]
+        
+        U2 = U2[:,[ids2]] 
+        sigma2 = sigma2[:, [ids2]]
+        VT2 = VT2[[ids2], :]   
+
+        # calculates W1 W2
+        self.W1 = np.dot(sigma1, VT1)
+        self.W2 = np.dot(sigma2, VT2)
+        
     
-    #def cost(self):
-    #def costp(self):
-    #def forward():
-    #def 
+    def sv_threshold(s):
+        elts = s.size 
+        for singular_value in s:
+            if (singular_value >= .02):
+                id.append(s) # add index in s if sing val is less
+
+        return id 
+    
+    def cost(self):
+        self.zp = self.forward(X)
+        e = (1 / y.)*sum((y-self.zp)**2)
+        return e
+    
+    def costp(self):
+        self.zp = self.forward(x)
+        
+        d4 = np.multiply(-(y-self.zp), self.sigp(self.p2))
+        dedU2 = np.dot(np.dot(self.W2, self.z1), d4)
+       
+        d3 = np.multiply(d4, self.sigp(self.p2))
+        dedW2 = np.dot(self.U2, np.dot(d3, self.z1.T)
+       
+        d2 = np.multiply(d3, self.sigp(self.p1))
+        dedU1 = np.dot(np.dot(self.W1, self.x.T), d2)
+         
+        d1 = np.dot(d2, self.M2.T) *self.sigp(self.p1)
+        dedW1 = np.dot(self.U1, np.dot(d2, self.x.T)
+        
+        return dedU2, dedW2, dedU1, dedW1  
+        
+    def forward():
+        self.p1 = np.dot(U1, np.dot(W1, X))
+        self.z1 = self.sigmoid(self.p1)
+        self.p2 = np.dot(U2, np.dot(W2, z1))
+        zp = self.sigmoid(self.p2)
+        return zp
+    
+    def sigmoid(self, z):
+        return 1/(1+np.exp(-z))
+        
+    def sigp(self, z):
+        return np.exp(-z)/((1+np.exp(-z))**2)
+
+    def getParams(self):
+        params = np.concatenate((dedU2.ravel(),dedW2.ravel(), dedU1.ravel(),dedW1.ravel()))
+        return params
+        
+    def setParams(self, params):
+        U1_start = 0
+        U1_end = len(U1[0])*self.inputLayer
+        self.U1 = np.reshape(params[U1_start:U1_end], (self.inputLayer, len(U1[0])))
+        
+        W1_start = 0
+        W1_end = len(W1[0])*self.inputLayer 
+        self.W1 = np.reshape(params[W1_start:W1_end], (self.inputLayer, len(W1[0]))) 
+
+        U2_start = 0
+        U2_end = len(U2[0])*self.inputLayer
+        self.U1 = np.reshape(params[U1_start:U1_end], (self.inputLayer, len(U2[0])))
+        
+        W2_start = 0
+        W2_end = len(W2[0])*self.inputLayer 
+        self.W2 = np.reshape(params[W2_start:W2_end], (self.inputLayer, len(W2[0]))) 
+        
+    def computeGradients(self, X, y):
+        dedU2, dedW2, dedU1, dedW1 = self.costp(X, y)
+        return np.concatenate((dedU2.ravel(),dedW2.ravel(), dedU1.ravel(),dedW1.ravel()))
 
 class trainer(object):
     def __init__(self, N):
@@ -46,7 +147,7 @@ class trainer(object):
 
         self.N.setParams(_res.x)
         self.optimizationResults = _res
-        
+             
 
 class Neural(object):
     def __init__(self):
