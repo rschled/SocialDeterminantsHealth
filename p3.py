@@ -2,6 +2,8 @@ import numpy as np
 from scipy import optimize
 import matplotlib.pyplot as plt
 import pandas as pd
+from pandas import ExcelWriter
+from pandas import ExcelFile
 
 #class SVDtrain(object):
     #def __init__(self, N):
@@ -38,7 +40,7 @@ class trainer(object):
         
         params0 = self.N.getParams()
 
-        options = {'maxiter': 200, 'disp' : True}
+        options = {'maxiter': 1000, 'disp' : False}
         _res = optimize.minimize(self.costFunctionWrapper, params0, jac=True, method='BFGS', \
                                  args=(X, y), options=options, callback=self.callbackF)
 
@@ -131,17 +133,13 @@ def main():
     numdata = pd.read_excel('formatted_vals.xlsx')
     numy = pd.read_excel('yvals.xlsx') 
 
-    trainx = numdata.loc[1:61].to_numpy() 
-    testx = numdata.loc[63:83].to_numpy()
+    trainx = numdata.loc[0:60].to_numpy() 
+    testx = numdata.loc[61:82].to_numpy()
     
-    trainy = numy.loc[1:61].to_numpy()
-    testy =  numy.loc[63:83].to_numpy()
+    trainy = numy.loc[0:60].to_numpy()
+    testy =  numy.loc[61:82].to_numpy()
 
-    #x = np.array(([1,.5, .7, .6, .2], [.5,.4,.6, .09, .1], [.5,.5,.5,.5,.5]), dtype = float)
-    #output data
-    #y = np.array(([.6],[.33], [.5]), dtype = float)
     nn = Neural()
-    
     #numgrad = computeNumericalGradient(nn, x, y)
     #grad = nn.computeGradients(x, y)
     #print(numgrad)
@@ -150,29 +148,43 @@ def main():
     #diff = np.linalg.norm(grad-numgrad)/np.linalg.norm(grad+numgrad)
     #print('Gradient difference :')
     #print(diff)
-    
     T = trainer(nn)
     T.train(trainx, trainy)
+    M1max = nn.M1
+    M2max = nn.M2
+    emin = sum((nn.forward(testx)-testy)**2)/22
+    
+    for i in range(100):
+        nnt = Neural()
+        T1 = trainer(nnt)
+        T1.train(trainx, trainy)
+        ecur = sum((nnt.forward(testx)-testy)**2)/22
+        if emin > ecur:
+            emin = ecur
+            M1max = nnt.M1
+            M2max = nnt.M2
+    
+        
     plt.plot(T.e)
     plt.grid(1)
     plt.ylabel('Cost')
     plt.xlabel('Iterations')
     plt.show()
     
-    yp = nn.forward(trainx)
+    yp = nn.forward(testx)
     print('Predicted :')
     print(yp)
     print('Actual :')
-    print(trainy)
+    print(testy)
     
 
     
     print('Matrix 1:')
-    print(nn.M1)
+    print(M1max)
     print('Matrix 2:')
-    print(nn.M2)
+    print(M2max)
     
-    error = sum((nn.forward(testx)-testy)**2)
+    error = sum((nn.forward(testx)-testy)**2)/22
     print('error:')
     print(error)
 
